@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'dart:async';
+import 'package:web_socket_channel/web_socket_channel.dart';
 import 'screenLogin.dart';
 import 'package:appsementes/domain/usuario.dart';
 import 'package:appsementes/helper/database_helper.dart';
@@ -19,6 +21,36 @@ class _TelaInicialState extends State<TelaInicial> {
   List<Map<String, dynamic>> _usersWithProducts = [];
   final DatabaseHelper _dbHelper = DatabaseHelper();
   List<Produto> _produtos = [];
+  late WebSocketChannel channel;
+  late StreamController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = StreamController.broadcast();
+    _initializeWebSocket();
+    _checkAuthStatus().then((token) {
+      if (token != null) {
+        _fetchUserData(token);
+        _fetchUserProducts(token);
+        _fetchUsersWithProducts(token);
+        _fetchProdutos(); // Carrega a lista de produtos ao iniciar a tela
+      }
+    });
+  }
+
+  void _initializeWebSocket() {
+    channel = WebSocketChannel.connect(
+      Uri.parse('wss://sementes-render.onrender.com/ws'),
+    );
+
+    channel.stream.listen((message) {
+      // Se a mensagem recebida for um novo produto, atualize a lista
+      if (message == 'new_product') {
+        _fetchProdutos();
+      }
+    });
+  }
 
   Future<void> _logout(BuildContext context) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -46,7 +78,8 @@ class _TelaInicialState extends State<TelaInicial> {
         return;
       }
 
-      final url = 'http://192.168.10.04:8080/produtos/$userId/produtos';
+      final url =
+          'https://sementes-render.onrender.com/produtos/$userId/produtos';
       final response = await http.get(
         Uri.parse(url),
         headers: {
@@ -92,7 +125,7 @@ class _TelaInicialState extends State<TelaInicial> {
 
   Future<void> _fetchUserData(String token) async {
     try {
-      final url = 'http://192.168.10.04:8080/usuario/me';
+      final url = 'https://sementes-render.onrender.com/usuario/me';
       final response = await http.get(
         Uri.parse(url),
         headers: {'Authorization': 'Bearer $token'},
@@ -122,7 +155,8 @@ class _TelaInicialState extends State<TelaInicial> {
     if (_usuario == null) return;
 
     try {
-      final url = 'http://192.168.10.04:8080/produtos/${_usuario!.id}';
+      final url =
+          'https://sementes-render.onrender.com/produtos/${_usuario!.id}';
       final response = await http.get(
         Uri.parse(url),
         headers: {'Authorization': 'Bearer $token'},
@@ -151,7 +185,7 @@ class _TelaInicialState extends State<TelaInicial> {
 
   Future<void> _fetchUsersWithProducts(String token) async {
     try {
-      final url = 'http://192.168.10.04:8080/usuario/lista';
+      final url = 'https://sementes-render.onrender.com/usuario/lista';
       final response = await http.get(
         Uri.parse(url),
         headers: {'Authorization': 'Bearer $token'},
@@ -172,19 +206,6 @@ class _TelaInicialState extends State<TelaInicial> {
     }
   }
 
-  @override
-  void initState() {
-    super.initState();
-    _checkAuthStatus().then((token) {
-      if (token != null) {
-        _fetchUserData(token);
-        _fetchUserProducts(token);
-        _fetchUsersWithProducts(token);
-        _fetchProdutos(); // Carrega a lista de produtos ao iniciar a tela
-      }
-    });
-  }
-
   Future<void> _navigateToCadastroProduto() async {
     final result = await Navigator.push(
       context,
@@ -199,6 +220,13 @@ class _TelaInicialState extends State<TelaInicial> {
         }
       });
     }
+  }
+
+  @override
+  void dispose() {
+    channel.sink.close();
+    _controller.close();
+    super.dispose();
   }
 
   @override

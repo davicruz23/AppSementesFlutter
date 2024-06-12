@@ -18,13 +18,21 @@ class _UserRegistrationScreenState extends State<UserRegistrationScreen> {
   TextEditingController _confirmPasswordController = TextEditingController();
 
   Future<void> _registerUser() async {
+    if (!validarCpf(_cpfController.text)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('CPF inválido.'),
+        ),
+      );
+      return;
+    }
+
     try {
-      final url = 'http://192.168.10.04:8080/auth/register';
+      final url = 'https://sementes-render.onrender.com/auth/register';
       final response = await http.post(
         Uri.parse(url),
         headers: {
-          'Content-Type':
-              'application/json', // Define o tipo de mídia como JSON
+          'Content-Type': 'application/json',
         },
         body: json.encode({
           'nomecompleto': _nameController.text,
@@ -36,17 +44,72 @@ class _UserRegistrationScreenState extends State<UserRegistrationScreen> {
       );
 
       if (response.statusCode == 200) {
-        print("sucesso");
+        print("Sucesso no cadastro.");
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => UserLoginScreen()),
         );
+      } else if (response.statusCode == 409) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('CPF já está em uso.'),
+          ),
+        );
+      } else if (response.statusCode == 409) {
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text('Usuário já está em uso.'),
+    ),
+  );
+}
+
+       else if (response.statusCode == 403) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Acesso proibido. Verifique suas permissões.'),
+          ),
+        );
       } else {
         print("Falha na requisição: ${response.statusCode}");
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erro ao registrar usuário: ${response.statusCode}'),
+          ),
+        );
       }
     } catch (e) {
       print("Erro durante a requisição: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Erro durante a requisição: $e'),
+        ),
+      );
     }
+  }
+
+  bool validarCpf(String cpf) {
+    cpf = limparNumero(cpf);
+
+    if (cpf.length != 11 || RegExp(r'(\d)\1{10}').hasMatch(cpf)) {
+      return false;
+    }
+
+    for (int t = 9; t < 11; t++) {
+      int d = 0;
+      for (int c = 0; c < t; c++) {
+        d += int.parse(cpf[c]) * ((t + 1) - c);
+      }
+      d = ((10 * d) % 11) % 10;
+      if (int.parse(cpf[t]) != d) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  String limparNumero(String numero) {
+    return numero.replaceAll(RegExp(r'[^0-9]'), '');
   }
 
   @override

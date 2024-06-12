@@ -8,7 +8,6 @@ environment:
 
 dependencies:
   build_runner: ^2.4.9
-  contacts_service: ^0.6.3
   flutter:
     sdk: flutter
   flutter_launcher_icons: ^0.13.1
@@ -17,6 +16,7 @@ dependencies:
   http: ^1.2.1
   shared_preferences: ^2.2.3
   sqflite: ^2.3.3+1
+  web_socket_channel: ^3.0.0
 
 dev_dependencies:
   flutter_test:
