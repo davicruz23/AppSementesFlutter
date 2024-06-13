@@ -50,20 +50,13 @@ class _UserRegistrationScreenState extends State<UserRegistrationScreen> {
           MaterialPageRoute(builder: (context) => UserLoginScreen()),
         );
       } else if (response.statusCode == 409) {
+        final responseData = json.decode(utf8.decode(response.bodyBytes));
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('CPF já está em uso.'),
+            content: Text(responseData['error']),
           ),
         );
-      } else if (response.statusCode == 409) {
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(
-      content: Text('Usuário já está em uso.'),
-    ),
-  );
-}
-
-       else if (response.statusCode == 403) {
+      } else if (response.statusCode == 403) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Acesso proibido. Verifique suas permissões.'),
